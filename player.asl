@@ -282,3 +282,7 @@ jugadorGano(_, false).// :- jugadorGano_impl(0, 0, Yo, ValorVerdad).
 
 	// Realizar el movimiento a esa casilla
 	put(X).
+
+// Descartar comunicaciones que lleguen de otros agentes, pues solo nos interesa
+// lo que diga el entorno
++!kqml_received(Agente, _, _, _) : .my_name(Yo) & Agente \== Yo.
