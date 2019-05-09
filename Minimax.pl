@@ -5,15 +5,13 @@
 
 % Elemento del árbol de juego (Jugada): [ movimiento(X, Y, SoyYoQuienHaceMov), movimiento(X, Y, SoyYoQuienHaceMov), ... ]
 
+:- consult("Zobrist.pl").
+
 % La profundidad máxima del árbol de juego a considerar. Afecta a la
 % corrección y tiempo de ejecución del algoritmo: más profundidad aumenta
 % la calidad de las jugadas, a costa de mayor tiempo de ejecución y consumo de
 % memoria
 profundidadArbolJuego(6).
-
-% Las dimensiones del tablero
-anchoTablero(8).
-altoTablero(8).
 
 % El valor devuelto por la heurística para señalar una victoria. Es el valor
 % máximo posible que puede tomar la heurística
@@ -127,9 +125,9 @@ minimax_impl(JugadaActual, [JugadaActual, Heuristica], 0, _, _, _) :-
 % hijas
 minimax_impl(JugadaActual, [JugadaOptima, Heuristica], Profundidad, MinimoMax, MaximoMin, Maximizar) :-
 	Profundidad > 0, % Para hacer esta regla exclusiva respecto de la primera
-	misJugadasTeniendoCuentaMaximin(Maximizar, MisJugadas),
-	generarJugadasInmediatas(JugadaActual, Jugadas, MisJugadas),
 	negar(Maximizar, NuevoMaximizar), % Para alternar entre max y min en cada nivel de profundidad del árbol
+	misJugadasTeniendoCuentaMaximin(NuevoMaximizar, MisJugadas),
+	generarJugadasInmediatas(JugadaActual, Jugadas, MisJugadas),
 	minimaxNodoArbol(JugadaActual, Jugadas, JugadaOptima, Heuristica, Profundidad, MinimoMax, MaximoMin, NuevoMaximizar).
 
 % Los nodos que dan lugar a por lo menos una jugada posible deben de ser analizados
@@ -204,8 +202,7 @@ generarJugadasInmediatas(JugadaHecha, [], _) :-
 % Si hay una columna siguiente, y tiene hueco para una ficha, entonces generar una nueva jugada con ella,
 % y añadirla a la lista
 generarJugadasInmediatas_impl(X, JugadaHecha, JugadasGeneradas, MisJugadas) :-
-	anchoTablero(Ancho),
-	X >= 0, X < Ancho,
+	X >= 0, X < 8,
 	tablero(X, 0, 0),
 	SigX is X + 1,
 	generarJugadasInmediatas_impl(SigX, JugadaHecha, difListas(InicioJugadasGeneradas, FinJugadasGeneradas), MisJugadas),
@@ -214,8 +211,7 @@ generarJugadasInmediatas_impl(X, JugadaHecha, JugadasGeneradas, MisJugadas) :-
 	append_dl(difListas([NuevaJugada|Cdr], Cdr), difListas(InicioJugadasGeneradas, FinJugadasGeneradas), JugadasGeneradas).
 % Si hay una columna siguiente, pero no hay hueco para una ficha, continuar iteraciones sin añadir nuevas jugadas
 generarJugadasInmediatas_impl(X, JugadaHecha, difListas(InicioJugadasGeneradas, FinJugadasGeneradas), MisJugadas) :-
-	anchoTablero(Ancho),
-	X >= 0, X < Ancho,
+	X >= 0, X < 8,
 	tablero(X, 0, Jugador),
 	Jugador \= 0,
 	SigX is X + 1,
@@ -223,8 +219,7 @@ generarJugadasInmediatas_impl(X, JugadaHecha, difListas(InicioJugadasGeneradas, 
 % Si no hay una columna siguiente, las nuevas jugadas generadas se corresponden
 % con la lista vacía (caso base)
 generarJugadasInmediatas_impl(X, _, difListas(JugadasGeneradas, JugadasGeneradas), _) :-
-	anchoTablero(Ancho),
-	(X < 0; X >= Ancho).
+	X < 0; X >= 8.
 
 % Comprueba si el tablero está lleno
 tableroLleno :- not(tablero(_, _, 0)).
@@ -275,18 +270,14 @@ deshacerJugadaHecha :- not(jugadaHecha(_)).
 
 % Calcula la coordenada vertical donde caería una ficha colocada en la columna X
 calcularGravedad(X, Y) :-
-	altoTablero(Alto),
-	AltoProc is Alto - 1,
-	calcularGravedad_impl(X, Y, AltoProc).
+	calcularGravedad_impl(X, Y, 7).
 % Si hay un hueco disponible en la Y actual, es ahí donde cae (caso base)
 calcularGravedad_impl(X, YActual, YActual) :-
-	altoTablero(Alto),
-	YActual >= 0, YActual < Alto,
+	YActual >= 0, YActual < 8,
 	tablero(X, YActual, 0).
 % Si no hay un hueco en la ordenada actual, pero todavía estamos en rango, seguir comprobando
 calcularGravedad_impl(X, Y, YActual) :-
-	altoTablero(Alto),
-	YActual >= 0, YActual < Alto,
+	YActual >= 0, YActual < 8,
 	tablero(X, YActual, Jugador),
 	Jugador \= 0,
 	YSig is YActual - 1,
