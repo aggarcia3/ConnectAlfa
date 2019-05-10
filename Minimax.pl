@@ -8,7 +8,7 @@
 % Los segundos que debe de tardar en realizarse una jugada, a modo orientativo.
 % La búsqueda puede tardar más de este tiempo, si se da la casualidad de que poco antes
 % de que expire el tiempo incrementa el nivel de profundidad de la búsqueda
-segundosJugadas(3).
+segundosJugadas(5).
 
 % El valor devuelto por la heurística para señalar una victoria. Es el valor
 % máximo posible que puede tomar la heurística
@@ -103,7 +103,7 @@ peorSiguienteColumna(X) :-
 	peorSiguienteColumna_impl(X, X, Ahora, 1).
 
 % Llama a minimax con niveles crecientes de profundidad, hasta que se agote el tiempo máximo
-% de selección de jugada. Es decir, implementa una úsqueda en profundidad iterativa
+% de selección de jugada. Es decir, implementa una búsqueda en profundidad iterativa
 mejorSiguienteColumna_impl(X, _, TiempoInicio, ProfundidadActual) :-
 	writeln("Iteración de búsqueda en curso..."),
 	minimax([[movimiento(XNuevo, _, _)|_], _], ProfundidadActual),
@@ -122,8 +122,9 @@ siguienteIteracionMejor(X, X, _, Transcurrido, _) :-
 	Transcurrido >= TiempoMax. % Si han pasado TiempoMax segundos o más, interrumpir la búsqueda iterativa y quedarnos con la jugada actual
 
 % Llama a maximin con niveles crecientes de profundidad, hasta que se agote el tiempo máximo
-% de selección de jugada. Es decir, implementa una úsqueda en profundidad iterativa
+% de selección de jugada. Es decir, implementa una búsqueda en profundidad iterativa
 peorSiguienteColumna_impl(X, _, TiempoInicio, ProfundidadActual) :-
+	writeln("Iteración de búsqueda en curso..."),
 	maximin([[movimiento(XNuevo, _, _)|_], _], ProfundidadActual),
 	get_time(Ahora),
 	Transcurrido is Ahora - TiempoInicio,
@@ -215,6 +216,7 @@ minimaxNodoArbol(JugadaActual, [], JugadaActual, Heuristica, _, _, _, _) :-
 	simularJugada(JugadaActual),
 	heuristica(JugadaActual, Heuristica).
 
+% Coloca como primera jugada aquella que hemos determinado que es el mejor movimiento actual
 ordenarJugadas(JugadaActual, Jugadas, JugadasOrdenadas, _) :-
 	simularJugada(JugadaActual),
 	enMapaZobrist,
@@ -501,5 +503,3 @@ vaciarTablaTransposicionesSiCambioEstrategia :-
 % Realizar tareas de inicialización
 :- inicializarTableroAnterior.
 :- inicializarEstrategiaAnterior.
-
-% TODO: añadir .wait en plan de Jason a los resultados de la inicialización
