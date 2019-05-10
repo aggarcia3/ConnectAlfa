@@ -446,7 +446,7 @@ entradasMapaZobrist(0).
 // Crea una entrada en la tabla de transposiciones para el estado actual.
 asociarEntradaEstadoActual(E) :-
 	entradasMapaZobrist(Entradas) &
-	Entradas < 4096 & // A 1 KiB por entrada (estimación a ojo de buen cubero pesimista), las entradas ocuparían 4 MiB
+	Entradas < 16384 & // A 1 KiB por entrada (estimación a ojo de buen cubero pesimista), las entradas ocuparían 16 MiB
 	eliminarDeMapaSiEsta &
 	hashZobristActual(Hash) &
 	.abolish(entradasMapaZobrist(_)) &
@@ -455,7 +455,7 @@ asociarEntradaEstadoActual(E) :-
 // Si llegamos al máximo de entradas, vaciar el mapa y volver a empezar
 asociarEntradaEstadoActual(E) :-
 	entradasMapaZobrist(Entradas) &
-	Entradas >= 4096 &
+	Entradas >= 16384 &
 	esei.si.alejandrogg.retract(mapaZobrist(_, _)) &
 	hashZobristActual(Hash) &
 	.assertz(mapaZobrist(Hash, E)).
