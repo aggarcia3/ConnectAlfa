@@ -3,8 +3,15 @@ MAS connectAlfa {
 	environment: Blackboard
 	agents:
 		// segundosJugadas: los segundos que debe de tardar en analizarse una jugada, a modo orientativo.
-		// La b�squeda puede tardar m�s de este tiempo, si se da la casualidad de que poco antes
-		// de que expire el tiempo incrementa el nivel de profundidad de la b�squeda iterativa
+		// La búsqueda puede tardar más de este tiempo, si se da la casualidad de que poco antes
+		// de que expire el tiempo incrementa el nivel de profundidad de la búsqueda iterativa
+		// *******************************************
+		// * IMPORTANTE: LEER SI APARENTA BLOQUEARSE *
+		// *******************************************
+		// Debido a la complejidad exponencial en tiempo del algoritmo de búsqueda empleado, un valor inapropiado de
+		// segundosJugadas para el computador actual puede provocar que el algoritmo tarde mucho tiempo en completar
+		// la última iteración, si termina la penúltima antes del tiempo deseado, pues tarda un tiempo
+		// exponencialmente mayor en completar la última iteración respecto la penúltima.
 		player1 player.asl [verbose = 1, segundosJugadas = 5];
 		player2 player.asl [verbose = 1, segundosJugadas = 5];
 }
