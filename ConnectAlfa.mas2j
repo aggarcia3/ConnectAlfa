@@ -1,5 +1,5 @@
 MAS connectAlfa {
-    infrastructure: Centralised
+	infrastructure: Centralised
 	environment: Blackboard
-    agents: player1 player.asl; player2 player.asl;
+	agents: player1 player.asl /*[verbose=2]*/; player2 player.asl;
 }
