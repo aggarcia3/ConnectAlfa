@@ -77,5 +77,3 @@ $RECYCLE.BIN/
 mas.log
 # Ficheros compilados
 bin/
-# Copias de seguridad
-*~
