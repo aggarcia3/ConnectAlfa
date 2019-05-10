@@ -21,7 +21,7 @@ public final class segundosJugadas extends DefaultInternalAction {
     public Object execute(TransitionSystem ts, Unifier un, Term[] args) throws Exception {
         checkArguments(args);
         // Leer argumento del usuario correspondiente desde el fichero .mas2j
-        return un.unifies(args[0], new NumberTermImpl(Integer.parseInt(ts.getSettings().getUserParameter("segundosJugadas"))));
+        return un.unifies(args[0], ASSyntax.parseNumber(ts.getSettings().getUserParameter("segundosJugadas")));
     }
 }
 
