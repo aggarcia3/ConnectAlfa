@@ -79,7 +79,7 @@ entradasMapaZobrist(0).
 % Crea una entrada en la tabla de transposiciones para el estado actual.
 asociarEntradaEstadoActual(E) :-
 	entradasMapaZobrist(Entradas),
-	Entradas < 8192, % A 1 KiB por entrada (estimación a ojo de buen cubero pesimista), las entradas ocuparían 65 MiB
+	Entradas < 16384, % A 1 KiB por entrada (estimación a ojo de buen cubero pesimista), las entradas ocuparían 16 MiB
 	eliminarDeMapaSiEsta,
 	hashZobristActual(Hash),
 	retract(entradasMapaZobrist(_)),
@@ -89,7 +89,7 @@ asociarEntradaEstadoActual(E) :-
 % Si llegamos al máximo de entradas, vaciar el mapa y volver a empezar
 asociarEntradaEstadoActual(E) :-
 	entradasMapaZobrist(Entradas),
-	Entradas >= 8192,
+	Entradas >= 16384,
 	retract(mapaZobrist(_, _)), % Implementar como función interna en Jason
 	hashZobristActual(Hash),
 	assertz(mapaZobrist(Hash, E)).
