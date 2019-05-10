@@ -1,5 +1,5 @@
 % Idea intuitiva: guardar las últimas jugadas procesadas por minimax, para que si se vuelven a consultar
-% pronto baste con consultar una tabla en lugar de tener que calcular minimax de nuevo
+% baste con consultar una tabla en lugar de tener que calcular minimax de nuevo
 
 :- dynamic hashZobristActual/1.
 % Calcula el primer valor del hash de Zobrist para el estado inicial del tablero.
@@ -72,30 +72,56 @@ colocarFichaZobrist(X, Y, AnteriorId, NuevoId) :-
 	asserta(hashZobristActual(HashProc)).
 
 :- dynamic entradasMapaZobrist/1.
+% El número de entradas actuales en la tabla de transposiciones
 entradasMapaZobrist(0).
 
 :- dynamic mapaZobrist/2.
-asociarJugadaOptimaEstadoActual(Jugada) :-
+% Crea una entrada en la tabla de transposiciones para el estado actual.
+asociarEntradaEstadoActual(E) :-
 	entradasMapaZobrist(Entradas),
-	Entradas < 256,
+	Entradas < 8192, % A 1 KiB por entrada (estimación a ojo de buen cubero pesimista), las entradas ocuparían 65 MiB
+	eliminarDeMapaSiEsta,
 	hashZobristActual(Hash),
 	retract(entradasMapaZobrist(_)),
 	EntradasInc is Entradas + 1,
 	asserta(entradasMapaZobrist(EntradasInc)),
-	asserta(mapaZobrist(Hash, Jugada)).
-asociarJugadaOptimaEstadoActual(Jugada) :-
+	assertz(mapaZobrist(Hash, E)).
+% Si llegamos al máximo de entradas, vaciar el mapa y volver a empezar
+asociarEntradaEstadoActual(E) :-
 	entradasMapaZobrist(Entradas),
-	Entradas >= 256,
+	Entradas >= 8192,
+	retract(mapaZobrist(_, _)), % Implementar como función interna en Jason
 	hashZobristActual(Hash),
-	retractall(mapaZobrist(_, _)),
-	retract(entradasMapaZobrist(_)),
-	asserta(entradasMapaZobrist(1)),
-	asserta(mapaZobrist(Hash, Jugada)).
+	assertz(mapaZobrist(Hash, E)).
 
+% Elimina la entrada en la tabla correspondiente al estado actual, si hay
+eliminarDeMapaSiEsta :-
+	enMapaZobrist,
+	hashZobristActual(Hash),
+	entradasMapaZobrist(Entradas),
+	retract(entradasMapaZobrist(_)),
+	EntradasDec is Entradas - 1,
+	asserta(entradasMapaZobrist(EntradasDec)),
+	retract(mapaZobrist(Hash, _)).
+eliminarDeMapaSiEsta :-
+	not(enMapaZobrist).
+
+% Comprueba si hay una entrada para el estado actual del tablero en la tabla de
+% transposiciones
 enMapaZobrist :-
 	hashZobristActual(Hash),
 	mapaZobrist(Hash, _).
 
-obtenerJugadaOptimaZobrist(Jugada) :-
+% Obtiene la entrada asociada al estado actual del tablero en la tabla de
+% transposiciones. No maneja colisiones, que se estiman muy poco probables
+obtenerEntradaZobrist(E) :-
 	hashZobristActual(Hash),
-	mapaZobrist(Hash, Jugada).
+	mapaZobrist(Hash, E).
+
+% Vacía la tabla de transposiciones
+vaciarMapaZobrist :-
+	retractall(mapaZobrist(_, _)),
+	retract(entradasMapaZobrist(_)),
+	asserta(entradasMapaZobrist(1)).
+
+:- inicializarZobrist.

@@ -117,17 +117,6 @@ caracteristicaFichasEnCentro_impl(Yo, 0, X, Y) :-
 	soyYoAIdentificadorJugador(Yo, MiId),
 	tablero(X, Y, Id), Id \= MiId.
 
-% Si ya hemos computado el resultado de jugadorGano para la jugada actual, reusarlo. En caso contrario, computarlo una vez
-% por jugada
-:- dynamic jugadorGano_/3.
-jugadorGano_cacheado(Jugada, Yo, ValorVerdad) :-
-	not(jugadorGano_(Jugada, Yo, ValorVerdad)),
-	jugadorGano(Yo, ValorVerdad), % El parámetro Jugada tan solo nos interesa para distinguir entre estados del tablero y garantizar coherencia de caché, no para computar si el jugador ha ganado
-	assertz(jugadorGano_(Jugada, Yo, ValorVerdad)).
-jugadorGano_cacheado(Jugada, Yo, ValorVerdad) :- jugadorGano_(Jugada, Yo, ValorVerdad).
-% Borra de la base de conocimiento reglas temporales, usadas para recordar resultados parciales
-borrar_jugadorGano_cacheado :- retractall(jugadorGano_(_, _, _)).
-
 % Cláusula interfaz para comprobar si alguien ha ganado la partida o no. El segundo argumento existe para que se pueda guardar
 % en caché el valor de salida de tal argumento, en vez de si se ha encontrado una solución o no.
 % Diferencia principal entre esta regla y caracteristicaRaya: detiene la evaluación de rayas al encontrar la primera de 4,
