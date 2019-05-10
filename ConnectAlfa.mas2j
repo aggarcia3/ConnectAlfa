@@ -1,5 +1,10 @@
 MAS connectAlfa {
 	infrastructure: Centralised
 	environment: Blackboard
-	agents: player1 player.asl /*[verbose=2]*/; player2 player.asl;
+	agents:
+		// segundosJugadas: los segundos que debe de tardar en analizarse una jugada, a modo orientativo.
+		// La búsqueda puede tardar más de este tiempo, si se da la casualidad de que poco antes
+		// de que expire el tiempo incrementa el nivel de profundidad de la búsqueda iterativa
+		player1 player.asl [verbose = 1, segundosJugadas = 5];
+		player2 player.asl [verbose = 1, segundosJugadas = 5];
 }

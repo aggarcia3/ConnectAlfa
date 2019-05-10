@@ -2,11 +2,6 @@
 
 /* Creencias y reglas iniciales */
 
-// Los segundos que debe de tardar en realizarse una jugada, a modo orientativo.
-// La búsqueda puede tardar más de este tiempo, si se da la casualidad de que poco antes
-// de que expire el tiempo incrementa el nivel de profundidad de la búsqueda
-segundosJugadas(5).
-
 // El valor devuelto por la heurística para señalar una victoria. Es el valor
 // máximo posible que puede tomar la heurística
 heuristicaVictoria(999999).
@@ -505,7 +500,7 @@ vaciarMapaZobrist :-
 
 // Analiza y realiza la mejor jugada decidible para el estado actual del tablero
 +!hacerMejorJugada[source(self)] :
-	estrategia(Est) & segundosJugadas(TiempoMax) &
+	estrategia(Est) & esei.si.alejandrogg.segundosJugadas(TiempoMax) &
 	vaciarTablaTransposicionesSiAplicable & percibirMovimientoRival
 <-
 	+inicioAnalisis(system.time);
