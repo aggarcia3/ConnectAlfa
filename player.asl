@@ -526,11 +526,10 @@ vaciarMapaZobrist :-
 
 	-inicioAnalisis(_);
 	-profundidadBusqueda(_);
+	-movimientoOptimo(X);
 
 	// Realizar el movimiento a la columna calculada
-	?movimientoOptimo(X);
-	put(X);
-	-movimientoOptimo(X).
+	put(X).
 
 // Reaccionar al evento de turno recibido
 +turno(Yo)[source(percept)] : .my_name(Yo) <-
