@@ -241,18 +241,8 @@ deshacerJugadaHecha :-
 deshacerJugadaHecha :- not jugadaHecha(_).
 
 // Calcula la coordenada vertical donde caería una ficha colocada en la columna X
-calcularGravedad(X, Y) :-
-	calcularGravedad_impl(X, Y, 7).
-// Si hay un hueco disponible en la Y actual, es ahí donde cae (caso base)
-calcularGravedad_impl(X, YActual, YActual) :-
-	YActual >= 0 & YActual < 8 &
-	tablero(X, YActual, 0).
-// Si no hay un hueco en la ordenada actual, pero todavía estamos en rango, seguir comprobando
-calcularGravedad_impl(X, Y, YActual) :-
-	YActual >= 0 & YActual < 8 &
-	tablero(X, YActual, Jugador) &
-	Jugador \== 0 &
-	calcularGravedad_impl(X, Y, YActual - 1).
+calcularGravedad(X, 7 - (8 - CasillasOcupadas)) :-
+	.count(tablero(X, _, 0), CasillasOcupadas).
 
 // Concatena dos listas expresadas como diferencias de listas.
 // Esta operación es de complejidad O(1)
