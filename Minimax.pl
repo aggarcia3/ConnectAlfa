@@ -87,55 +87,6 @@ tablero(7, 7, 0).
 
 :- consult("Zobrist.pl").
 
-% Cláusulas interfaz para obtener la columna donde colocar una ficha para maximizar
-% nuestra victoria o la del contrincante
-mejorSiguienteColumna(X) :-
-	percibirMovimientoRival,
-	get_time(Ahora),
-	mejorSiguienteColumna_impl(X, X, Ahora, 1).
-peorSiguienteColumna(X) :-
-	percibirMovimientoRival,
-	get_time(Ahora),
-	peorSiguienteColumna_impl(X, X, Ahora, 1).
-
-% Llama a minimax con niveles crecientes de profundidad, hasta que se agote el tiempo máximo
-% de selección de jugada. Es decir, implementa una búsqueda en profundidad iterativa
-mejorSiguienteColumna_impl(X, _, TiempoInicio, ProfundidadActual) :-
-	writeln("Iteración de búsqueda en curso..."),
-	minimax([[movimiento(XNuevo, _, _)|_], _], ProfundidadActual),
-	get_time(Ahora),
-	Transcurrido is Ahora - TiempoInicio,
-	siguienteIteracionMejor(X, XNuevo, TiempoInicio, Transcurrido, ProfundidadActual).
-
-% Predicados que deciden si realizar una nueva iteración de búsqueda o no, dependiendo del tiempo que haya pasado
-siguienteIteracionMejor(X, XActual, TiempoInicio, Transcurrido, ProfundidadActual) :-
-	segundosJugadas(TiempoMax),
-	Transcurrido < TiempoMax, % Si han pasado menos de TiempoMax segundos, realizar una iteración más
-	ProfundidadNueva is ProfundidadActual + 1,
-	mejorSiguienteColumna_impl(X, XActual, TiempoInicio, ProfundidadNueva).
-siguienteIteracionMejor(X, X, _, Transcurrido, _) :-
-	segundosJugadas(TiempoMax),
-	Transcurrido >= TiempoMax. % Si han pasado TiempoMax segundos o más, interrumpir la búsqueda iterativa y quedarnos con la jugada actual
-
-% Llama a maximin con niveles crecientes de profundidad, hasta que se agote el tiempo máximo
-% de selección de jugada. Es decir, implementa una búsqueda en profundidad iterativa
-peorSiguienteColumna_impl(X, _, TiempoInicio, ProfundidadActual) :-
-	writeln("Iteración de búsqueda en curso..."),
-	maximin([[movimiento(XNuevo, _, _)|_], _], ProfundidadActual),
-	get_time(Ahora),
-	Transcurrido is Ahora - TiempoInicio,
-	siguienteIteracionPeor(X, XNuevo, TiempoInicio, Transcurrido, ProfundidadActual).
-
-% Predicados que deciden si realizar una nueva iteración de búsqueda o no, dependiendo del tiempo que haya pasado
-siguienteIteracionPeor(X, XActual, TiempoInicio, Transcurrido, ProfundidadActual) :-
-	segundosJugadas(TiempoMax),
-	Transcurrido < TiempoMax, % Si han pasado menos de TiempoMax segundos, realizar una iteración más
-	ProfundidadNueva is ProfundidadActual + 1,
-	peorSiguienteColumna_impl(X, XActual, TiempoInicio, ProfundidadNueva).
-siguienteIteracionPeor(X, X, _, Transcurrido, _) :-
-	segundosJugadas(TiempoMax),
-	Transcurrido >= TiempoMax. % Si han pasado TiempoMax segundos o más, interrumpir la búsqueda iterativa y quedarnos con la jugada actual
-
 % Cláusula interfaz para obtener la jugada óptima a realizar, con su heurística asociada
 minimax(JugadaYHeuristica, P) :-
 	heuristicaDerrota(MinimoMax), % MinimoMax = Alfa. Encuentro el primer nombre de variable más intuitivo
@@ -369,8 +320,8 @@ deshacerJugadaHecha :- not(jugadaHecha(_)).
 
 % Calcula la coordenada vertical donde caería una ficha colocada en la columna X
 calcularGravedad(X, Y) :-
-	aggregate_all(count, tablero(X, _, 0), CasillasOcupadas),
-	Y is 8 - CasillasOcupadas.
+	aggregate_all(count, tablero(X, _, 0), CasillasLibres),
+	Y is 7 - (8 - CasillasLibres).
 
 % Concatena dos listas expresadas como diferencias de listas.
 % Esta operación es de complejidad O(1)
@@ -429,8 +380,12 @@ elementoComun([Car|Cdr], L2) :-
 soyYoAIdentificadorJugador(true, 1).
 soyYoAIdentificadorJugador(false, 2).
 
-identificadorJugadorASoyYo(Id, true) :- soyYoAIdentificadorJugador(true, Id).
-identificadorJugadorASoyYo(Id, false) :- soyYoAIdentificadorJugador(false, Id).
+identificadorJugadorASoyYo(Id, true) :-
+	soyYoAIdentificadorJugador(true, IdYo),
+	Id = IdYo.
+identificadorJugadorASoyYo(Id, false) :-
+	soyYoAIdentificadorJugador(false, IdOtro),
+	Id = IdOtro.
 
 % Predicado que es verdadero si y solo si no es el primer turno del juego
 % (es decir, alguien ha colocado una ficha)
@@ -591,5 +546,3 @@ olvidarRayasSiPrimerTurno :-
 
 % Realizar tareas de inicialización
 :- inicializarTableroAnterior.
-
-% TODO: addRayasJugador de la jugada que al final haga el agente en Jason
