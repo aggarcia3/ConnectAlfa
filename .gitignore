@@ -76,3 +76,7 @@ $RECYCLE.BIN/
 bin/
 # Copias de seguridad
 *~
+# Ficheros ocultos
+\#*\#
+# Ficheros de control
+.stop___MAS

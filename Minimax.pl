@@ -17,14 +17,12 @@ heuristicaVictoria(999999).
 % mínimo posible que puede tomar la heurística
 heuristicaDerrota(-999999).
 
-estrategia(jugarAPerder).
-
 % El estado actual del tablero. Se asume que el estado es completo
 % y consistente
 :- dynamic tablero/3.
-tablero(0, 0, 0).
-tablero(0, 1, 0).
-tablero(0, 2, 0).
+tablero(0, 0, 1).
+tablero(0, 1, 1).
+tablero(0, 2, 1).
 tablero(0, 3, 0).
 tablero(0, 4, 0).
 tablero(0, 5, 0).
@@ -38,7 +36,7 @@ tablero(1, 4, 0).
 tablero(1, 5, 0).
 tablero(1, 6, 0).
 tablero(1, 7, 0).
-tablero(2, 0, 0).
+tablero(2, 0, 2).
 tablero(2, 1, 0).
 tablero(2, 2, 0).
 tablero(2, 3, 0).
@@ -92,12 +90,10 @@ tablero(7, 7, 0).
 % Cláusulas interfaz para obtener la columna donde colocar una ficha para maximizar
 % nuestra victoria o la del contrincante
 mejorSiguienteColumna(X) :-
-	vaciarTablaTransposicionesSiCambioEstrategia,
 	percibirMovimientoRival,
 	get_time(Ahora),
 	mejorSiguienteColumna_impl(X, X, Ahora, 1).
 peorSiguienteColumna(X) :-
-	vaciarTablaTransposicionesSiCambioEstrategia,
 	percibirMovimientoRival,
 	get_time(Ahora),
 	peorSiguienteColumna_impl(X, X, Ahora, 1).
@@ -303,7 +299,7 @@ generarJugadasInmediatas(JugadaHecha, [], _) :-
 % y añadirla a la lista
 generarJugadasInmediatas_impl(X, JugadaHecha, JugadasGeneradas, MisJugadas) :-
 	X >= 0, X < 8,
-	tablero(X, 0, 0),
+	tablero(X, 7, 0),
 	SigX is X + 1,
 	generarJugadasInmediatas_impl(SigX, JugadaHecha, difListas(InicioJugadasGeneradas, FinJugadasGeneradas), MisJugadas),
 	calcularGravedad(X, Y),
@@ -312,7 +308,7 @@ generarJugadasInmediatas_impl(X, JugadaHecha, JugadasGeneradas, MisJugadas) :-
 % Si hay una columna siguiente, pero no hay hueco para una ficha, continuar iteraciones sin añadir nuevas jugadas
 generarJugadasInmediatas_impl(X, JugadaHecha, difListas(InicioJugadasGeneradas, FinJugadasGeneradas), MisJugadas) :-
 	X >= 0, X < 8,
-	tablero(X, 0, Jugador),
+	tablero(X, 7, Jugador),
 	Jugador \= 0,
 	SigX is X + 1,
 	generarJugadasInmediatas_impl(SigX, JugadaHecha, difListas(InicioJugadasGeneradas, FinJugadasGeneradas), MisJugadas).
@@ -336,8 +332,8 @@ aplicarMovimiento(movimiento(X, Y, SoyYoQuienHaceMov)) :-
 	soyYoAIdentificadorJugador(SoyYoQuienHaceMov, Id),
 	retract(tablero(X, Y, 0)), % abolish en Jason
 	asserta(tablero(X, Y, Id)),
+	addRayasJugador(X, Y, Id),
 	colocarFichaZobrist(X, Y, 0, Id).
-	% TODO: crear y mantener predicados raya, que indiquen la posición de las rayas formadas, por quién y de qué longitud
 
 :- dynamic jugadaHecha/1.
 % Aplica una jugada, deshaciendo cualquier otra jugada simulada anterior, para evitar incongruencias.
@@ -345,8 +341,8 @@ aplicarMovimiento(movimiento(X, Y, SoyYoQuienHaceMov)) :-
 simularJugada(Jugada) :-
 	not(jugadaHecha(Jugada)),
 	deshacerJugadaHecha,
-	aplicarJugada(Jugada),
-	asserta(jugadaHecha(Jugada)).
+	asserta(jugadaHecha(Jugada)),
+	aplicarJugada(Jugada).
 simularJugada(Jugada) :- jugadaHecha(Jugada).
 
 % Sin jugada que deshacer, no hacer nada (caso base)
@@ -367,13 +363,14 @@ deshacerMovimiento(movimiento(X, Y, SoyYoQuienHaceMov)) :-
 deshacerJugadaHecha :-
 	jugadaHecha(Jugada),
 	deshacerJugada(Jugada),
+	retractall(rayaSimulada(_, _, _, _, _, _)), % abolish en Jason
 	retract(jugadaHecha(Jugada)).
 deshacerJugadaHecha :- not(jugadaHecha(_)).
 
 % Calcula la coordenada vertical donde caería una ficha colocada en la columna X
 calcularGravedad(X, Y) :-
 	aggregate_all(count, tablero(X, _, 0), CasillasOcupadas),
-	Y is 7 - (8 - CasillasOcupadas).
+	Y is 8 - CasillasOcupadas.
 
 % Concatena dos listas expresadas como diferencias de listas.
 % Esta operación es de complejidad O(1)
@@ -423,14 +420,24 @@ eliminarElementoLista([Car|Cdr], E, R) :-
 	Car = E, % El elemento a eliminar no se incluye en el resultado
 	eliminarElementoLista(Cdr, E, R).
 
+% Predicados que devuelven cierto si una lista tiene algún elemento en común con otra
+elementoComun([Car|_], L2) :- member(Car, L2). % .member en Jason
+elementoComun([Car|Cdr], L2) :-
+	not(member(Car, L2)),
+	elementoComun(Cdr, L2).
+
 soyYoAIdentificadorJugador(true, 1).
 soyYoAIdentificadorJugador(false, 2).
+
+identificadorJugadorASoyYo(Id, true) :- soyYoAIdentificadorJugador(true, Id).
+identificadorJugadorASoyYo(Id, false) :- soyYoAIdentificadorJugador(false, Id).
 
 % Predicado que es verdadero si y solo si no es el primer turno del juego
 % (es decir, alguien ha colocado una ficha)
 noEsPrimerTurno :- tablero(_, _, Id), Id \= 0.
 
 :- dynamic tableroAnterior/3.
+tableroAnterior(2, 2, 0).
 % Inicializa el estado anterior del tablero, que se corresponde con el estado inicial.
 % El tablero cambia de estado una sola vez cuando termina el turno de un jugador
 inicializarTableroAnterior :- inicializarTableroAnterior_impl(0, 0).
@@ -466,9 +473,123 @@ percibirMovimientoRival :-
 	movimientoRealizado(X, Y, Id),
 	tableroAnterior(X, Y, AnteriorId),
 	actualizarEstadoAnterior(X, Y, Id),
-	colocarFichaZobrist(X, Y, AnteriorId, Id).
+	colocarFichaZobrist(X, Y, AnteriorId, Id),
+	addRayasJugador(X, Y, Id).
 % Si es el primer turno del juego, no hay nada que percibir
 percibirMovimientoRival :- not(noEsPrimerTurno).
 
+% Añade incrementalmente las rayas que ha realizado un jugador, a partir de la colocación de
+% su última ficha
+addRayasJugador(X, Y, Jugador) :-
+	addRayasJugador_impl(X, Y, Jugador, -1, 0),
+	addRayasJugador_impl(X, Y, Jugador, -1, -1),
+	addRayasJugador_impl(X, Y, Jugador, 0, -1),
+	addRayasJugador_impl(X, Y, Jugador, 1, -1),
+	addRayasJugador_impl(X, Y, Jugador, 1, 0),
+	addRayasJugador_impl(X, Y, Jugador, 1, 1),
+	addRayasJugador_impl(X, Y, Jugador, 0, 1),
+	addRayasJugador_impl(X, Y, Jugador, -1, 1).
+addRayasJugador_impl(X, Y, Jugador, DX, DY) :-
+	calcularComienzoRaya(X, Y, Jugador, DX, DY, CX, CY, Longitud),
+	identificadorJugadorASoyYo(Jugador, MiRaya),
+	recordarRaya(CX, CY, Longitud, DX, DY, MiRaya).
+
+% Añade a la base de conocimiento información sobre una raya, si procede
+recordarRaya(CX, CY, Longitud, DX, DY, MiRaya) :-
+	Longitud > 1,
+	purgarRayasRedundantes(CX, CY, Longitud, DX, DY),
+	anadirRayaABC(CX, CY, Longitud, DX, DY, MiRaya).
+recordarRaya(_, _, Longitud, _, _, _) :- Longitud < 2.
+
+% Añade información de la formación de una raya a la BC de manera diferente
+% dependiendo de si estamos en un contexto de simulación de jugadas o no
+:- dynamic raya/6.
+:- dynamic rayaSimulada/6.
+anadirRayaABC(CX, CY, Longitud, DX, DY, MiRaya) :-
+	jugadaHecha(_),
+	assertz(rayaSimulada(CX, CY, Longitud, DX, DY, MiRaya)).
+anadirRayaABC(CX, CY, Longitud, DX, DY, MiRaya) :-
+	not(jugadaHecha(_)),
+	assertz(raya(CX, CY, Longitud, DX, DY, MiRaya)).
+
+% Cláusula interfaz para calcular dónde comienza una raya de un jugador
+calcularComienzoRaya(X, Y, Jugador, DX, DY, CX, CY, Longitud) :-
+	calcularComienzoRaya_impl(Jugador, DX, DY, CX, CY, Longitud, X, Y, 0).
+% Seguir recorriendo la el tablero en la dirección de la posible raya hasta que se agote
+calcularComienzoRaya_impl(Jugador, DX, DY, CX, CY, Longitud, XActual, YActual, LongitudActual) :-
+	XActual >= 0, XActual < 8, YActual >= 0, YActual < 8,
+	tablero(XActual, YActual, Jugador),
+	NuevaLongitud is LongitudActual + 1,
+	NuevaLongitud < 5,
+	XSig is XActual - DX,
+	YSig is YActual - DY,
+	calcularComienzoRaya_impl(Jugador, DX, DY, CX, CY, Longitud, XSig, YSig, NuevaLongitud).
+% Si hemos encontrado una casilla que no tiene una ficha del jugador, o nos salimos del tablero,
+% la raya se detiene aquí (caso base)
+calcularComienzoRaya_impl(Jugador, DX, DY, XAnterior, YAnterior, LongitudActual, XActual, YActual, LongitudActual) :-
+	(
+		XActual < 0; XActual > 7; YActual < 0; YActual > 7;
+		(tablero(XActual, YActual, Id), Id \= Jugador)
+	),
+	XAnterior is XActual + DX,
+	YAnterior is YActual + DY.
+% Si llegamos a 5 fichas o más, limitarnos a considerar la raya de 4 ya formada
+calcularComienzoRaya_impl(Jugador, DX, DY, XAnterior, YAnterior, 4, XActual, YActual, LongitudActual) :-
+	XActual >= 0, XActual < 8, YActual >= 0, YActual < 8,
+	tablero(XActual, YActual, Jugador),
+	NuevaLongitud is LongitudActual + 1,
+	NuevaLongitud >= 5,
+	XAnterior is XActual + DX,
+	YAnterior is YActual + DY.
+
+% Elimina de la BC las rayas que ocupan alguna de las casillas de otra raya, en la misma dirección
+% (pero en igual u opuesto sentido)
+purgarRayasRedundantes(CX, CY, Longitud, DX, DY) :-
+	casillasOcupadas(CX, CY, Longitud, DX, DY, Casillas),
+	eliminarRayasQueOcupanAlgunaCasilla(Casillas, DX, DY),
+	DXInv is -DX,
+	DYInv is -DY,
+	eliminarRayasQueOcupanAlgunaCasilla(Casillas, DXInv, DYInv).
+
+% Una raya de longitud 0 no ocupa ninguna casilla (caso base)
+casillasOcupadas(_, _, 0, _, _, []).
+% Mientras continúe la raya, añadir las casillas que ocupa a la lista resultado
+casillasOcupadas(X, Y, LongitudRestante, DX, DY, [casilla(X, Y)|Casillas]) :-
+	LongitudRestante > 0,
+	LongitudNueva is LongitudRestante - 1,
+	XSig is X + DX,
+	YSig is Y + DY,
+	casillasOcupadas(XSig, YSig, LongitudNueva, DX, DY, Casillas).
+
+% Cláusula interfaz para eliminar de la BC las rayas que ocupan alguna de las casillas dadas,
+% con una dirección determinada
+eliminarRayasQueOcupanAlgunaCasilla(Casillas, DX, DY) :-
+	findall(raya(CX, CY, Longitud, DX, DY, MiRaya), raya(CX, CY, Longitud, DX, DY, MiRaya), Rayas), % .findall en Jason
+	eliminarRayasQueOcupanAlgunaCasilla_impl(Rayas, Casillas).
+% No hay nada que hacer si no hay rayas en la BC (caso base)
+eliminarRayasQueOcupanAlgunaCasilla_impl([], _).
+% Si la raya ocupa alguna casilla dada, eliminarla y analizar la siguiente
+eliminarRayasQueOcupanAlgunaCasilla_impl([raya(CX, CY, Longitud, DX, DY, MiRaya)|Cdr], Casillas) :-
+	ocupaRayaAlgunaCasilla(CX, CY, Longitud, DX, DY, Casillas),
+	retract(raya(CX, CY, Longitud, DX, DY, MiRaya)),
+	eliminarRayasQueOcupanAlgunaCasilla_impl(Cdr, Casillas).
+% Si la raya no ocupa alguna casilla dada, solo ir a la siguiente
+eliminarRayasQueOcupanAlgunaCasilla_impl([raya(CX, CY, Longitud, DX, DY, _)|Cdr], Casillas) :-
+	not(ocupaRayaAlgunaCasilla(CX, CY, Longitud, DX, DY, Casillas)),
+	eliminarRayasQueOcupanAlgunaCasilla_impl(Cdr, Casillas).
+
+% Predicado que es cierto si y solo si una raya ocupa alguna de las casillas dadas
+ocupaRayaAlgunaCasilla(CX, CY, Longitud, DX, DY, Casillas) :-
+	casillasOcupadas(CX, CY, Longitud, DX, DY, Ocupadas),
+	elementoComun(Casillas, Ocupadas).
+
+% Elimina de la base de conocimientos los datos deducidos sobre las rayas formadas
+olvidarRayasSiPrimerTurno :- noEsPrimerTurno.
+olvidarRayasSiPrimerTurno :-
+	not(noEsPrimerTurno),
+	retractall(raya(_, _, _, _)).
+
 % Realizar tareas de inicialización
 :- inicializarTableroAnterior.
+
+% TODO: addRayasJugador de la jugada que al final haga el agente en Jason
