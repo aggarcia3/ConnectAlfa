@@ -349,27 +349,6 @@ percibirMovimientoRival :-
 // Si es el primer turno del juego, no hay nada que percibir
 percibirMovimientoRival :- not noEsPrimerTurno.
 
-// Inicializa la estrategia usada a la primera estrategia de la primera ronda
-inicializarEstrategiaAnterior :-
-	estrategia(Est) &
-	.asserta(estrategiaAnterior(Est)).
-
-// Predicados que vacían la tabla de transposiciones si ha ocurrido un cambio
-// de estrategia o empieza una nueva partida, pues las transposiciones dejarían de tener validez
-vaciarTablaTransposicionesSiAplicable :-
-	estrategiaAnterior(EstAnt) &
-	estrategia(Est) &
-	EstAnt = Est &
-	noEsPrimerTurno.
-vaciarTablaTransposicionesSiAplicable :-
-	((estrategiaAnterior(EstAnt) &
-	estrategia(Est) &
-	EstAnt \== Est &
-	.abolish(estrategiaAnterior(_)) &
-	.asserta(estrategiaAnterior(Est))) |
-	not noEsPrimerTurno) &
-	vaciarMapaZobrist.
-
 heuristica(_, V) :- .random(V).
 
 // Cláusula interfaz para comprobar si alguien ha ganado la partida o no. El segundo argumento existe para que se pueda guardar
@@ -446,7 +425,7 @@ entradasMapaZobrist(0).
 // Crea una entrada en la tabla de transposiciones para el estado actual.
 asociarEntradaEstadoActual(E) :-
 	entradasMapaZobrist(Entradas) &
-	Entradas < 16384 & // A 1 KiB por entrada (estimación a ojo de buen cubero pesimista), las entradas ocuparían 16 MiB
+	Entradas < 65536 & // A 1 KiB por entrada (estimación a ojo de buen cubero pesimista), las entradas ocuparían 65 MiB
 	eliminarDeMapaSiEsta &
 	hashZobristActual(Hash) &
 	.abolish(entradasMapaZobrist(_)) &
@@ -455,7 +434,7 @@ asociarEntradaEstadoActual(E) :-
 // Si llegamos al máximo de entradas, vaciar el mapa y volver a empezar
 asociarEntradaEstadoActual(E) :-
 	entradasMapaZobrist(Entradas) &
-	Entradas >= 16384 &
+	Entradas >= 65536 &
 	esei.si.alejandrogg.retract(mapaZobrist(_, _)) &
 	hashZobristActual(Hash) &
 	.assertz(mapaZobrist(Hash, E)).
@@ -483,12 +462,6 @@ obtenerEntradaZobrist(E) :-
 	hashZobristActual(Hash) &
 	mapaZobrist(Hash, E).
 
-// Vacía la tabla de transposiciones
-vaciarMapaZobrist :-
-	.abolish(mapaZobrist(_, _)) &
-	.abolish(entradasMapaZobrist(_)) &
-	.asserta(entradasMapaZobrist(1)).
-
 /* Objetivos iniciales */
 
 !inicializarEstructurasDatos.
@@ -496,12 +469,12 @@ vaciarMapaZobrist :-
 /* Planes */
 
 // Inicializa las estructuras de datos del agente
-+!inicializarEstructurasDatos[source(self)] : inicializarTableroAnterior & inicializarEstrategiaAnterior & inicializarZobrist.
++!inicializarEstructurasDatos[source(self)] : inicializarTableroAnterior & inicializarZobrist.
 
 // Analiza y realiza la mejor jugada decidible para el estado actual del tablero
 +!hacerMejorJugada[source(self)] :
 	estrategia(Est) & esei.si.alejandrogg.segundosJugadas(TiempoMax) &
-	vaciarTablaTransposicionesSiAplicable & percibirMovimientoRival
+	percibirMovimientoRival
 <-
 	+inicioAnalisis(system.time);
 	?inicioAnalisis(Inicio);
