@@ -372,18 +372,8 @@ deshacerJugadaHecha :- not(jugadaHecha(_)).
 
 % Calcula la coordenada vertical donde caería una ficha colocada en la columna X
 calcularGravedad(X, Y) :-
-	calcularGravedad_impl(X, Y, 7).
-% Si hay un hueco disponible en la Y actual, es ahí donde cae (caso base)
-calcularGravedad_impl(X, YActual, YActual) :-
-	YActual >= 0, YActual < 8,
-	tablero(X, YActual, 0).
-% Si no hay un hueco en la ordenada actual, pero todavía estamos en rango, seguir comprobando
-calcularGravedad_impl(X, Y, YActual) :-
-	YActual >= 0, YActual < 8,
-	tablero(X, YActual, Jugador),
-	Jugador \= 0,
-	YSig is YActual - 1,
-	calcularGravedad_impl(X, Y, YSig).
+	aggregate_all(count, tablero(X, _, 0), CasillasOcupadas),
+	Y is 7 - (8 - CasillasOcupadas).
 
 % Concatena dos listas expresadas como diferencias de listas.
 % Esta operación es de complejidad O(1)
@@ -480,26 +470,5 @@ percibirMovimientoRival :-
 % Si es el primer turno del juego, no hay nada que percibir
 percibirMovimientoRival :- not(noEsPrimerTurno).
 
-:- dynamic estrategiaAnterior/1.
-% Inicializa la estrategia usada a la primera estrategia de la primera ronda
-inicializarEstrategiaAnterior :-
-	estrategia(Est),
-	asserta(estrategiaAnterior(Est)).
-
-% Predicados que vacían la tabla de transposiciones si ha ocurrido un cambio
-% de estrategia, pues las transposiciones dejarían de tener validez
-vaciarTablaTransposicionesSiCambioEstrategia :-
-	estrategiaAnterior(EstAnt),
-	estrategia(Est),
-	EstAnt = Est.
-vaciarTablaTransposicionesSiCambioEstrategia :-
-	estrategiaAnterior(EstAnt),
-	estrategia(Est),
-	EstAnt \= Est,
-	retract(estrategiaAnterior(_)),
-	asserta(estrategiaAnterior(Est)),
-	vaciarMapaZobrist.
-
 % Realizar tareas de inicialización
 :- inicializarTableroAnterior.
-:- inicializarEstrategiaAnterior.
