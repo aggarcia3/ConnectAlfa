@@ -208,6 +208,7 @@ aplicarMovimiento(movimiento(X, Y, SoyYoQuienHaceMov)) :-
 	soyYoAIdentificadorJugador(SoyYoQuienHaceMov, Id) &
 	.abolish(tablero(X, Y, 0)[source(percept)]) &
 	.asserta(tablero(X, Y, Id)[source(percept)]) &
+	addRayasJugador(X, Y, Id) &
 	colocarFichaZobrist(X, Y, 0, Id).
 
 // Aplica una jugada, deshaciendo cualquier otra jugada simulada anterior, para evitar incongruencias.
@@ -215,8 +216,8 @@ aplicarMovimiento(movimiento(X, Y, SoyYoQuienHaceMov)) :-
 simularJugada(Jugada) :-
 	not jugadaHecha(Jugada) &
 	deshacerJugadaHecha &
-	aplicarJugada(Jugada) &
-	.asserta(jugadaHecha(Jugada)).
+	.asserta(jugadaHecha(Jugada)) &
+	aplicarJugada(Jugada).
 simularJugada(Jugada) :- jugadaHecha(Jugada).
 
 // Sin jugada que deshacer, no hacer nada (caso base)
@@ -237,12 +238,14 @@ deshacerMovimiento(movimiento(X, Y, SoyYoQuienHaceMov)) :-
 deshacerJugadaHecha :-
 	jugadaHecha(Jugada) &
 	deshacerJugada(Jugada) &
+	.abolish(rayaSimulada(_, _, _, _, _, _)) &
 	.abolish(jugadaHecha(Jugada)).
 deshacerJugadaHecha :- not jugadaHecha(_).
 
 // Calcula la coordenada vertical donde caería una ficha colocada en la columna X
-calcularGravedad(X, 7 - (8 - CasillasOcupadas)) :-
-	.count(tablero(X, _, 0), CasillasOcupadas).
+calcularGravedad(X, 7 - (8 - CasillasLibres)) :-
+	.count(tablero(X, _, 0), CasillasLibres).
+calcularGravedad(X, 0).
 
 // Concatena dos listas expresadas como diferencias de listas.
 // Esta operación es de complejidad O(1)
@@ -292,11 +295,24 @@ eliminarElementoLista([Car|Cdr], E, R) :-
 	Car = E & // El elemento a eliminar no se incluye en el resultado
 	eliminarElementoLista(Cdr, E, R).
 
+// Predicados que devuelven cierto si una lista tiene algún elemento en común con otra
+elementoComun([Car|_], L2) :- .member(Car, L2).
+elementoComun([Car|Cdr], L2) :-
+	not .member(Car, L2) &
+	elementoComun(Cdr, L2).
+
 soyYoAIdentificadorJugador(true, Id) :-
 	.my_name(Yo) &
 	.delete("player", Yo, IdStr) &
 	.term2string(Id, IdStr).
 soyYoAIdentificadorJugador(false, 1 + (MiId mod 2)) :- soyYoAIdentificadorJugador(true, MiId).
+
+identificadorJugadorASoyYo(Id, true) :-
+	soyYoAIdentificadorJugador(true, IdYo) &
+	Id = IdYo.
+identificadorJugadorASoyYo(Id, false) :-
+	soyYoAIdentificadorJugador(false, IdOtro) &
+	Id = IdOtro.
 
 // Predicado que es verdadero si y solo si no es el primer turno del juego
 // (es decir, alguien ha colocado una ficha)
@@ -335,20 +351,138 @@ percibirMovimientoRival :-
 	movimientoRealizado(X, Y, Id) &
 	tableroAnterior(X, Y, AnteriorId) &
 	actualizarEstadoAnterior(X, Y, Id) &
-	colocarFichaZobrist(X, Y, AnteriorId, Id).
+	colocarFichaZobrist(X, Y, AnteriorId, Id) &
+	addRayasJugador(X, Y, Id).
 // Si es el primer turno del juego, no hay nada que percibir
 percibirMovimientoRival :- not noEsPrimerTurno.
 
-heuristica(_, V) :- .random(V).
+// Añade incrementalmente las rayas que ha realizado un jugador, a partir de la colocación de
+// su última ficha
+addRayasJugador(X, Y, Jugador) :-
+	addRayasJugador_impl(X, Y, Jugador, -1, 0) &
+	addRayasJugador_impl(X, Y, Jugador, -1, -1) &
+	addRayasJugador_impl(X, Y, Jugador, 0, -1) &
+	addRayasJugador_impl(X, Y, Jugador, 1, -1) &
+	addRayasJugador_impl(X, Y, Jugador, 1, 0) &
+	addRayasJugador_impl(X, Y, Jugador, 1, 1) &
+	addRayasJugador_impl(X, Y, Jugador, 0, 1) &
+	addRayasJugador_impl(X, Y, Jugador, -1, 1).
+addRayasJugador_impl(X, Y, Jugador, DX, DY) :-
+	calcularComienzoRaya(X, Y, Jugador, DX, DY, CX, CY, Longitud) &
+	identificadorJugadorASoyYo(Jugador, MiRaya) &
+	recordarRaya(CX, CY, Longitud, DX, DY, MiRaya).
 
-// Cláusula interfaz para comprobar si alguien ha ganado la partida o no. El segundo argumento existe para que se pueda guardar
-// en caché el valor de salida de tal argumento, en vez de si se ha encontrado una solución o no.
-// Diferencia principal entre esta regla y caracteristicaRaya: detiene la evaluación de rayas al encontrar la primera de 4,
-// y no sigue hasta el final del tablero, por lo que es algo más eficiente
-jugadorGano(_, false).// :- jugadorGano_impl(0, 0, Yo, ValorVerdad).
+// Añade a la base de conocimiento información sobre una raya, si procede
+recordarRaya(CX, CY, Longitud, DX, DY, MiRaya) :-
+	Longitud > 1 &
+	purgarRayasRedundantes(CX, CY, Longitud, DX, DY) &
+	anadirRayaABC(CX, CY, Longitud, DX, DY, MiRaya).
+recordarRaya(_, _, Longitud, _, _, _) :- Longitud < 2.
 
-// Idea intuitiva: guardar las últimas jugadas procesadas por minimax, para que si se vuelven a consultar
-// baste con consultar una tabla en lugar de tener que calcular minimax de nuevo
+// Añade información de la formación de una raya a la BC de manera diferente
+// dependiendo de si estamos en un contexto de simulación de jugadas o no
+anadirRayaABC(CX, CY, Longitud, DX, DY, MiRaya) :-
+	jugadaHecha(_) &
+	.assertz(rayaSimulada(CX, CY, Longitud, DX, DY, MiRaya)).
+anadirRayaABC(CX, CY, Longitud, DX, DY, MiRaya) :-
+	not jugadaHecha(_) &
+	.assertz(raya(CX, CY, Longitud, DX, DY, MiRaya)).
+
+// Cláusula interfaz para calcular dónde comienza una raya de un jugador
+calcularComienzoRaya(X, Y, Jugador, DX, DY, CX, CY, Longitud) :-
+	calcularComienzoRaya_impl(Jugador, DX, DY, CX, CY, Longitud, X, Y, 0).
+// Seguir recorriendo la el tablero en la dirección de la posible raya hasta que se agote
+calcularComienzoRaya_impl(Jugador, DX, DY, CX, CY, Longitud, XActual, YActual, LongitudActual) :-
+	XActual >= 0 & XActual < 8 & YActual >= 0 & YActual < 8 &
+	tablero(XActual, YActual, Jugador) &
+	(LongitudActual + 1) < 5 &
+	calcularComienzoRaya_impl(Jugador, DX, DY, CX, CY, Longitud, XActual - DX, YActual - DY, LongitudActual + 1).
+// Si hemos encontrado una casilla que no tiene una ficha del jugador, o nos salimos del tablero,
+// la raya se detiene aquí (caso base)
+calcularComienzoRaya_impl(Jugador, DX, DY, XActual + DX, YActual + DY, LongitudActual, XActual, YActual, LongitudActual) :-
+	XActual < 0 | XActual > 7 | YActual < 0 | YActual > 7 |
+	(tablero(XActual, YActual, Id) & Id \== Jugador).
+// Si llegamos a 5 fichas o más, limitarnos a considerar la raya de 4 ya formada
+calcularComienzoRaya_impl(Jugador, DX, DY, XActual + DX, YActual + DY, 4, XActual, YActual, LongitudActual) :-
+	XActual >= 0 & XActual < 8 & YActual >= 0 & YActual < 8 &
+	tablero(XActual, YActual, Jugador) &
+	(LongitudActual + 1) >= 5.
+
+// Elimina de la BC las rayas que ocupan alguna de las casillas de otra raya, en la misma dirección
+// (pero en igual u opuesto sentido)
+purgarRayasRedundantes(CX, CY, Longitud, DX, DY) :-
+	casillasOcupadas(CX, CY, Longitud, DX, DY, Casillas) &
+	eliminarRayasQueOcupanAlgunaCasilla(Casillas, DX, DY) &
+	eliminarRayasQueOcupanAlgunaCasilla(Casillas, -DX, -DY).
+
+// Una raya de longitud 0 no ocupa ninguna casilla (caso base)
+casillasOcupadas(_, _, 0, _, _, []).
+// Mientras continúe la raya, añadir las casillas que ocupa a la lista resultado
+casillasOcupadas(X, Y, LongitudRestante, DX, DY, [casilla(X, Y)|Casillas]) :-
+	LongitudRestante > 0 &
+	casillasOcupadas(X + DX, Y + DY, LongitudRestante - 1, DX, DY, Casillas).
+
+// Cláusula interfaz para eliminar de la BC las rayas que ocupan alguna de las casillas dadas,
+// con una dirección determinada
+eliminarRayasQueOcupanAlgunaCasilla(Casillas, DX, DY) :-
+	.findall(raya(CX, CY, Longitud, DX, DY, MiRaya), raya(CX, CY, Longitud, DX, DY, MiRaya), Rayas) &
+	eliminarRayasQueOcupanAlgunaCasilla_impl(Rayas, Casillas).
+// No hay nada que hacer si no hay rayas en la BC (caso base)
+eliminarRayasQueOcupanAlgunaCasilla_impl([], _).
+// Si la raya ocupa alguna casilla dada, eliminarla y analizar la siguiente
+eliminarRayasQueOcupanAlgunaCasilla_impl([raya(CX, CY, Longitud, DX, DY, MiRaya)|Cdr], Casillas) :-
+	ocupaRayaAlgunaCasilla(CX, CY, Longitud, DX, DY, Casillas) &
+	.abolish(raya(CX, CY, Longitud, DX, DY, MiRaya)) &
+	eliminarRayasQueOcupanAlgunaCasilla_impl(Cdr, Casillas).
+// Si la raya no ocupa alguna casilla dada, solo ir a la siguiente
+eliminarRayasQueOcupanAlgunaCasilla_impl([raya(CX, CY, Longitud, DX, DY, _)|Cdr], Casillas) :-
+	not ocupaRayaAlgunaCasilla(CX, CY, Longitud, DX, DY, Casillas) &
+	eliminarRayasQueOcupanAlgunaCasilla_impl(Cdr, Casillas).
+
+// Predicado que es cierto si y solo si una raya ocupa alguna de las casillas dadas
+ocupaRayaAlgunaCasilla(CX, CY, Longitud, DX, DY, Casillas) :-
+	casillasOcupadas(CX, CY, Longitud, DX, DY, Ocupadas) &
+	elementoComun(Casillas, Ocupadas).
+
+// Elimina de la base de conocimientos los datos deducidos sobre las rayas formadas
+olvidarRayasSiPrimerTurno :- noEsPrimerTurno.
+olvidarRayasSiPrimerTurno :-
+	not noEsPrimerTurno &
+	.abolish(raya(_, _, _, _)).
+
+// Predicados que obtienen la puntuación heurística del estado actual del tablero
+// Si yo he ganado, la heurística será la máxima
+heuristica(_, Valor) :-
+	jugadorGano(true, true) &
+	heuristicaVictoria(Valor).
+// Si el contrincante ha ganado, la heurística será la mínima
+heuristica(_, Valor) :-
+	jugadorGano(false, true) &
+	heuristicaDerrota(Valor).
+// En otro caso (nadie ha ganado), la heurística se calculará en base a una función ponderada lineal
+heuristica(_, Valor) :-
+	jugadorGano(true, false) &
+	jugadorGano(false, false) &
+	heuristicaPonderadaLineal(Valor).
+
+// Calcula una puntuación heurística a partir de características del tablero que se consideran positivas (y negativas)
+heuristicaPonderadaLineal(30 * CaracteristicaRaya3Mia + 20 * CaracteristicaRaya2Mia + CaracteristicaFichasCentroYo) :-
+	caracteristicaRaya(true, CaracteristicaRaya3Mia, 3) &
+	caracteristicaRaya(true, CaracteristicaRaya2Mia, 2) &
+	caracteristicaFichasEnCentro(true, CaracteristicaFichasCentroYo).
+
+// Computa la característica de formar una raya de N fichas
+caracteristicaRaya(Yo, CaracteristicaRaya, Fichas) :- .count(rayaSimulada(_, _, Fichas, _, _, Yo), CaracteristicaRaya).
+
+// Computa la característica de tener fichas en el centro
+caracteristicaFichasEnCentro(Yo, CaracteristicaFichasCentro1 + CaracteristicaFichasCentro2) :-
+	soyYoAIdentificadorJugador(Yo, Id) &
+	.count(tablero(3, _, Id), CaracteristicaFichasCentro1) &
+	.count(tablero(4, _, Id), CaracteristicaFichasCentro2).
+
+// Cláusulas que comprueban si un jugador ha ganado; es decir, ha formado una raya de 4
+jugadorGano(Yo, false) :- not rayaSimulada(_, _, 4, _, _, Yo).
+jugadorGano(Yo, true) :- rayaSimulada(_, _, 4, _, _, Yo).
 
 // Calcula el primer valor del hash de Zobrist para el estado inicial del tablero.
 // Implementación basada en https://en.wikipedia.org/wiki/Zobrist_hashing
@@ -464,18 +598,17 @@ obtenerEntradaZobrist(E) :-
 // Analiza y realiza la mejor jugada decidible para el estado actual del tablero
 +!hacerMejorJugada[source(self)] :
 	estrategia(Est) & esei.si.alejandrogg.segundosJugadas(TiempoMax) &
-	percibirMovimientoRival
+	olvidarRayasSiPrimerTurno & percibirMovimientoRival & soyYoAIdentificadorJugador(true, MiId)
 <-
 	+inicioAnalisis(system.time);
 	?inicioAnalisis(Inicio);
 	+profundidadBusqueda(1);
 
 	// Realizar iterative deepening hasta que se agote el tiempo
-	while (system.time - Inicio < TiempoMax * 1000) {
-		?profundidadBusqueda(P);
-
+	while (profundidadBusqueda(P) & system.time - Inicio < TiempoMax * 1000 & P <= 32) {
 		.print("Búsqueda de profundidad ", P, " en curso... (", system.time - Inicio, " ms transcurridos)");
-		if (Est = jugarAGanar) {
+		// TODO: cambiar condición
+		if (Est = jugarAPerder) {
 			?mejorSiguienteColumna;
 		} else {
 			?peorSiguienteColumna;
@@ -491,7 +624,11 @@ obtenerEntradaZobrist(E) :-
 	-profundidadBusqueda(_);
 	-movimientoOptimo(X);
 
-	// Realizar el movimiento a la columna calculada
+	// Recordar rayas que pudimos haber hecho
+	?calcularGravedad(X, Y);
+	?addRayasJugador(X, Y, MiId);
+
+	// Finalmente, realizar el movimiento a la columna calculada
 	put(X).
 
 // Reaccionar al evento de turno recibido
