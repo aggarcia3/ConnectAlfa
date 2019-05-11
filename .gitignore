@@ -72,9 +72,11 @@ $RECYCLE.BIN/
 # End of https://www.gitignore.io/api/macos,linux,windows
 
 # Ficheros generados por jEdit
-
-# Registros de ejecución del SMA
-mas.log
 # Ficheros compilados
 bin/
-*.jar
+# Copias de seguridad
+*~
+# Ficheros ocultos
+\#*\#
+# Ficheros de control
+.stop___MAS
