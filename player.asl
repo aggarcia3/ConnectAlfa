@@ -511,7 +511,6 @@ obtenerEntradaZobrist(E) :-
 	// Esperar a que se inicialicen todas las variables, si es necesario.
 	// Esta espera devuelve el control inmediatamente si las creencias están en la BC
 	.wait(tableroAnterior(_, _, _));
-	.wait(estrategiaAnterior(_));
 	.wait(hashZobristActual(_));
 
 	.wait(750); // Por si estamos recibiendo todavía percepciones del tablero
