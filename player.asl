@@ -8,6 +8,8 @@ heuristicaVictoria(999999).
 // El valor devuelto por la heurística para señalar una derrota. Es el valor
 // mínimo posible que puede tomar la heurística
 heuristicaDerrota(-999999).
+// El número de entradas actuales en la tabla de transposiciones
+entradasMapaZobrist(0).
 
 // Cláusulas interfaz para obtener la columna donde colocar una ficha para maximizar
 // nuestra victoria o la del contrincante, dado un nivel de profundidad
@@ -94,11 +96,13 @@ minimaxNodoArbol(JugadaActual, [], JugadaActual, Heuristica, _, _, _, _) :-
 	heuristica(JugadaActual, Heuristica).
 
 // Coloca como primera jugada aquella que hemos determinado que es el mejor movimiento actual
-ordenarJugadas(JugadaActual, Jugadas, [JugadaOptima|JugadasProc], _) :-
+// Primera regla comentada porque se desactivó la poda alfa-beta, y al no usarla no tiene sentido ordenar
+// jugadas. Las razones para ello se detallan en un comentario más abajo
+/*ordenarJugadas(JugadaActual, Jugadas, [JugadaOptima|JugadasProc], _) :-
 	simularJugada(JugadaActual) &
 	enMapaZobrist &
 	obtenerEntradaZobrist([ JugadaOptima, _, exacto, _ ]) &
-	eliminarElementoLista(Jugadas, JugadaOptima, JugadasProc).
+	eliminarElementoLista(Jugadas, JugadaOptima, JugadasProc).*/
 ordenarJugadas(_, Jugadas, Jugadas, _).
 
 // Cláusula interfaz para obtener el resultado de aplicar minimax con poda alfa-beta sobre
@@ -131,11 +135,11 @@ podaAlfaBeta(MinimoMax, MaximoMin, _, JugadaOptimaActual, HeuristicaActual, _, _
 	MinimoMax >= MaximoMin. // Se cumple condición de poda. No seguir analizando jugadas posibles por aquí*/
 
 // Por alguna razón el uso de poda alfa-beta afecta a los resultados, y no debería. Quizás alfa y/o beta tomen valores incorrectos en alguna parte,
-// pero estoy con el agua al cuello y no tengo tiempo para investigar la causa raíz, así que he desactivado la poda.
-// La ausencia de poda también ayuda a garantizar un tiempo de análisis más uniforme entre jugadas, pues el número de nodos procesados es más
-// fácil de predecir
+// pero no tengo tiempo para investigar la causa raíz, así que he desactivado la poda.
+// La ausencia de poda también ayuda a que el tiempo de análisis sea más uniforme entre jugadas, pues el número de nodos procesados es más
+// fácil de predecir, así que no hay mal que por bien no venga
 podaAlfaBeta(MinimoMax, MaximoMin, Jugadas, JugadaOptima, Heuristica, Profundidad, Maximizar, JugadaOptimaActual, HeuristicaActual) :-
-		minimaxVariasJugadas_impl(Jugadas, JugadaOptima, Heuristica, Profundidad, MinimoMax, MaximoMin, Maximizar, JugadaOptimaActual, HeuristicaActual).
+	minimaxVariasJugadas_impl(Jugadas, JugadaOptima, Heuristica, Profundidad, MinimoMax, MaximoMin, Maximizar, JugadaOptimaActual, HeuristicaActual).
 
 // Actualiza la tabla de transposiciones con los valores deseables
 actualizarTablaTransposiciones(JugadaActual, JugadaOptima, Heuristica, MinimoMax, MaximoMin, Profundidad) :-
@@ -303,6 +307,12 @@ elementoComun([Car|Cdr], L2) :-
 	not .member(Car, L2) &
 	elementoComun(Cdr, L2).
 
+// Predicados que obtienen el último elemento de una lista cerrada
+ultimoElemento([E|[]], E).
+ultimoElemento([_|Cdr], E) :-
+	Cdr \== [] &
+	ultimoElemento(Cdr, E).
+
 soyYoAIdentificadorJugador(true, Id) :-
 	.my_name(Yo) &
 	.delete("player", Yo, IdStr) &
@@ -316,17 +326,35 @@ identificadorJugadorASoyYo(Id, false) :-
 	soyYoAIdentificadorJugador(false, IdOtro) &
 	Id = IdOtro.
 
-// Predicado que es verdadero si y solo si no es el primer turno del juego
+// Predicado que es verdadero si y solo si es el primer turno del juego
 // (es decir, alguien ha colocado una ficha)
-noEsPrimerTurno :- tablero(_, _, Id) & Id \== 0.
+esPrimerTurno :- not (tablero(_, _, Id) & Id \== 0).
 
-// Inicializa el estado anterior del tablero, que se corresponde con el estado inicial.
+// Predicado que es verdadero si y solo si es una nueva partida
+// (es decir, es el primer turno, o solo hay una ficha colocada)
+esNuevaPartida :-
+	esPrimerTurno |
+	.count((tablero(_, _, Id) & Id \== 0), 1).
+
+// Inicializa el estado anterior del tablero, que se corresponde con el estado inicial,
+// si ha empezado una nueva partida.
 // El tablero cambia de estado una sola vez cuando termina el turno de un jugador
-inicializarTableroAnterior :- inicializarTableroAnterior_impl(0, 0).
+inicializarTableroAnteriorSiNecesario :-
+	.print("Inicializando tablero anterior...") &
+	inicializarTableroSiNuevaPartida.
+
+inicializarTableroSiNuevaPartida :-
+	not esNuevaPartida &
+	.print("No procede inicializar el tablero anterior, porque no es una nueva partida").
+inicializarTableroSiNuevaPartida :-
+	esNuevaPartida &
+	.abolish(tableroAnterior(_, _, _)) &
+	inicializarTableroAnterior_impl(0, 0) &
+	.print("Inicializado tablero anterior").
+
 inicializarTableroAnterior_impl(X, Y) :-
 	X < 8 & Y < 8 &
-	tablero(X, Y, Id) &
-	.assertz(tableroAnterior(X, Y, Id)) &
+	.assertz(tableroAnterior(X, Y, 0)) &
 	inicializarTableroAnterior_impl(X + 1, Y).
 // Si hemos terminado de procesar la fila actual, ir con la siguiente
 inicializarTableroAnterior_impl(X, Y) :-
@@ -349,14 +377,16 @@ actualizarEstadoAnterior(X, Y, Id) :-
 
 // Si no es el primer turno del juego, actualizar tabla de transposiciones e información del estado anterior
 percibirMovimientoRival :-
-	noEsPrimerTurno &
+	.print("Percibiendo movimiento del rival...") &
+	not esPrimerTurno &
 	movimientoRealizado(X, Y, Id) &
 	tableroAnterior(X, Y, AnteriorId) &
 	actualizarEstadoAnterior(X, Y, Id) &
 	colocarFichaZobrist(X, Y, AnteriorId, Id) &
-	addRayasJugador(X, Y, Id).
+	addRayasJugador(X, Y, Id) &
+	.print("El rival ha colocado una ficha en (", X, ", ", Y, ")").
 // Si es el primer turno del juego, no hay nada que percibir
-percibirMovimientoRival :- not noEsPrimerTurno.
+percibirMovimientoRival :- esPrimerTurno & .print("Nada que percibir, es el primer turno").
 
 // Añade incrementalmente las rayas que ha realizado un jugador, a partir de la colocación de
 // su última ficha
@@ -447,9 +477,9 @@ ocupaRayaAlgunaCasilla(CX, CY, Longitud, DX, DY, Casillas) :-
 	elementoComun(Casillas, Ocupadas).
 
 // Elimina de la base de conocimientos los datos deducidos sobre las rayas formadas
-olvidarRayasSiPrimerTurno :- noEsPrimerTurno.
-olvidarRayasSiPrimerTurno :-
-	not noEsPrimerTurno &
+olvidarRayasSiNuevaPartida :- not esNuevaPartida.
+olvidarRayasSiNuevaPartida :-
+	esNuevaPartida &
 	.abolish(raya(_, _, _, _)).
 
 // Predicados que obtienen la puntuación heurística del estado actual del tablero
@@ -468,8 +498,8 @@ heuristica(_, Valor) :-
 	heuristicaPonderadaLineal(Valor).
 
 // Calcula una puntuación heurística a partir de características del tablero que se consideran positivas (y negativas)
-heuristicaPonderadaLineal(/*30 * CaracteristicaImpedirRaya3 +*/ 30 * CaracteristicaRaya3Mia + 20 * CaracteristicaRaya2Mia + CaracteristicaFichasCentroYo) :-
-	//caracteristicaImpedirRaya(true, CaracteristicaImpedirRaya3, 3) &
+heuristicaPonderadaLineal(30 * CaracteristicaImpedirRaya3 + 30 * CaracteristicaRaya3Mia + 20 * CaracteristicaRaya2Mia + CaracteristicaFichasCentroYo) :-
+	caracteristicaImpedirRaya(true, CaracteristicaImpedirRaya3, 3) &
 	caracteristicaRaya(true, CaracteristicaRaya3Mia, 3) &
 	caracteristicaRaya(true, CaracteristicaRaya2Mia, 2) &
 	caracteristicaFichasEnCentro(true, CaracteristicaFichasCentroYo).
@@ -572,9 +602,6 @@ colocarFichaZobrist(X, Y, AnteriorId, NuevoId) :-
 	.abolish(hashZobristActual(_)) &
 	.asserta(hashZobristActual(HashProc)).
 
-// El número de entradas actuales en la tabla de transposiciones
-entradasMapaZobrist(0).
-
 // Crea una entrada en la tabla de transposiciones para el estado actual.
 asociarEntradaEstadoActual(E) :-
 	entradasMapaZobrist(Entradas) &
@@ -622,22 +649,21 @@ obtenerEntradaZobrist(E) :-
 /* Planes */
 
 // Inicializa las estructuras de datos del agente
-+!inicializarEstructurasDatos[source(self)] : inicializarTableroAnterior & inicializarZobrist.
++!inicializarEstructurasDatos[source(self)] : inicializarZobrist.
 
 // Analiza y realiza la mejor jugada decidible para el estado actual del tablero
 +!hacerMejorJugada[source(self)] :
 	estrategia(Est) & esei.si.alejandrogg.segundosJugadas(TiempoMax) &
-	olvidarRayasSiPrimerTurno & percibirMovimientoRival & soyYoAIdentificadorJugador(true, MiId)
+	olvidarRayasSiNuevaPartida & inicializarTableroAnteriorSiNecesario & percibirMovimientoRival & soyYoAIdentificadorJugador(true, MiId)
 <-
 	+inicioAnalisis(system.time);
 	?inicioAnalisis(Inicio);
 	+profundidadBusqueda(1);
 
-	// Realizar iterative deepening hasta que se agote el tiempo
-	while (profundidadBusqueda(P) & system.time - Inicio < TiempoMax * 1000 & P <= 32) {
+	// Realizar iterative deepening hasta que se agote el tiempo, o hayamos analizado la jugada a bastante profundidad
+	while (profundidadBusqueda(P) & system.time - Inicio < TiempoMax * 1000 & P <= 12) {
 		.print("Búsqueda de profundidad ", P, " en curso... (", system.time - Inicio, " ms transcurridos)");
-		// TODO: cambiar condición
-		if (Est = jugarAPerder) {
+		if (Est = jugarAGanar) {
 			?mejorSiguienteColumna;
 		} else {
 			?peorSiguienteColumna;
@@ -653,9 +679,11 @@ obtenerEntradaZobrist(E) :-
 	-profundidadBusqueda(_);
 	-movimientoOptimo(X);
 
-	// Recordar rayas que pudimos haber hecho
+	// Recordar rayas que pudimos haber hecho, y calcular nuevo estado anterior
 	?calcularGravedad(X, Y);
+	-+tablero(X, Y, MiId)[source(percept)]; // Considerar el movimiento hecho, para que los predicados funcionen correctamente
 	?addRayasJugador(X, Y, MiId);
+	?actualizarEstadoAnterior(X, Y, MiId);
 
 	// Finalmente, realizar el movimiento a la columna calculada
 	put(X).
@@ -666,7 +694,6 @@ obtenerEntradaZobrist(E) :-
 
 	// Esperar a que se inicialicen todas las variables, si es necesario.
 	// Esta espera devuelve el control inmediatamente si las creencias están en la BC
-	.wait(tableroAnterior(_, _, _));
 	.wait(hashZobristActual(_));
 
 	.wait(750); // Por si estamos recibiendo todavía percepciones del tablero
