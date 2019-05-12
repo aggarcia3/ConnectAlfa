@@ -254,7 +254,7 @@ generarJugadasInmediatas_impl(X, JugadaHecha, JugadasGeneradas, MisJugadas) :-
 	SigX is X + 1,
 	generarJugadasInmediatas_impl(SigX, JugadaHecha, difListas(InicioJugadasGeneradas, FinJugadasGeneradas), MisJugadas),
 	calcularGravedad(X, Y),
-	append_simple(JugadaHecha, [movimiento(X, Y, MisJugadas)], NuevaJugada), % No vamos a tener que iterar sobre muchas jugadas
+	append(JugadaHecha, [movimiento(X, Y, MisJugadas)], NuevaJugada), % No vamos a tener que iterar sobre muchas jugadas
 	append_dl(difListas([NuevaJugada|Cdr], Cdr), difListas(InicioJugadasGeneradas, FinJugadasGeneradas), JugadasGeneradas).
 % Si hay una columna siguiente, pero no hay hueco para una ficha, continuar iteraciones sin añadir nuevas jugadas
 generarJugadasInmediatas_impl(X, JugadaHecha, difListas(InicioJugadasGeneradas, FinJugadasGeneradas), MisJugadas) :-
@@ -327,11 +327,6 @@ calcularGravedad(X, Y) :-
 % Esta operación es de complejidad O(1)
 append_dl(difListas(Inicio1, Fin1), difListas(Fin1, Fin2), difListas(Inicio1, Fin2)).
 
-% Concatena dos listas de manera trivial.
-% Esta operación es de complejidad O(n), pero funciona en listas cerradas
-append_simple([], L, L).
-append_simple([Car|Cdr], L, [Car|R]) :- append_simple(Cdr, L, R).
-
 % Obtiene el valor mínimo de dos variables instanciadas
 valorMinimo(A, B, A) :- A < B.
 valorMinimo(A, B, B) :- A >= B.
@@ -376,6 +371,12 @@ elementoComun([Car|_], L2) :- member(Car, L2). % .member en Jason
 elementoComun([Car|Cdr], L2) :-
 	not(member(Car, L2)),
 	elementoComun(Cdr, L2).
+
+% Predicados que obtienen el último elemento de una lista cerrada
+ultimoElemento([E|[]], E).
+ultimoElemento([_|Cdr], E) :-
+	Cdr \= [],
+	ultimoElemento(Cdr, E).
 
 soyYoAIdentificadorJugador(true, 1).
 soyYoAIdentificadorJugador(false, 2).
