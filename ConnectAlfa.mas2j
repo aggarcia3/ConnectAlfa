@@ -3,15 +3,22 @@ MAS connectAlfa {
 	environment: Blackboard
 	agents:
 		// segundosJugadas: los segundos que debe de tardar en analizarse una jugada, a modo orientativo.
-		// La bÃºsqueda puede tardar mÃ¡s de este tiempo, si se da la casualidad de que poco antes
-		// de que expire el tiempo incrementa el nivel de profundidad de la bÃºsqueda iterativa
+		// La búsqueda puede tardar más de este tiempo, si se da la casualidad de que poco antes
+		// de que expire el tiempo incrementa el nivel de profundidad de la búsqueda iterativa.
+		// El valor predeterminado es aproximadamente T + 3 s, donde T es el tiempo que tarda un PC
+		// en analizar 3 niveles de profundidad en el primer turno de la primera partida. Tal PC tiene una CPU
+		// Intel Core i3-2100 @ 3,1 GHz, 4 GiB RAM DDR3 Single Channel, OpenJDK 11 y Windows 10 Home (64 bits).
 		// *******************************************
 		// * IMPORTANTE: LEER SI APARENTA BLOQUEARSE *
 		// *******************************************
-		// Debido a la complejidad exponencial en tiempo del algoritmo de bÃºsqueda empleado, un valor inapropiado de
+		// Debido a la complejidad exponencial en tiempo del algoritmo de búsqueda empleado, un valor inapropiado de
 		// segundosJugadas para el computador actual puede provocar que el algoritmo tarde mucho tiempo en completar
-		// la Ãºltima iteraciÃ³n, si termina la penÃºltima antes del tiempo deseado, pues tarda un tiempo
-		// exponencialmente mayor en completar la Ãºltima iteraciÃ³n respecto la penÃºltima.
+		// la última iteración, si termina la penúltima antes del tiempo deseado, pues tarda un tiempo
+		// exponencialmente mayor en completar la última iteración respecto la penúltima. También incrementa el consumo
+		// de memoria a un nivel que puede resultar excesivo para la JVM, provocando un bloqueo por la ejecución
+		// del recolector de basura. Una idea mejor sería interrumpir la búsqueda si tarda mucho y quedarse con el resultado
+		// que ya se tiene, pero desconozco si Jason ofrece alguna API para interrumpir la evaluación de la verdad o falsedad
+		// de predicados de la BC (que no son lo mismo que los planes, para los cuales sí hay una API documentada).
 		player1 player.asl [verbose = 1, segundosJugadas = 5];
 		player2 player.asl [verbose = 1, segundosJugadas = 5];
 }
