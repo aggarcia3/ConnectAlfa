@@ -16,10 +16,12 @@ entradasMapaZobrist(0).
 mejorSiguienteColumna :-
 	profundidadBusqueda(P) &
 	minimax([[movimiento(X, _, _)|_], _], P) &
+	.abolish(movimientoOptimo(_)) &
 	.asserta(movimientoOptimo(X)).
 peorSiguienteColumna :-
 	profundidadBusqueda(P) &
 	maximin([[movimiento(X, _, _)|_], _], P) &
+	.abolish(movimientoOptimo(_)) &
 	.asserta(movimientoOptimo(X)).
 
 // Cláusula interfaz para obtener la jugada óptima a realizar, con su heurística asociada
@@ -648,15 +650,6 @@ vaciarMapaZobrist :-
 	.abolish(entradasMapaZobrist(_)) &
 	.asserta(entradasMapaZobrist(0)).
 
-// Predicados que vacían la tabla de transposiciones si es una nueva partida, para
-// evitar que el agente crea conocer los resultados de varios niveles de profundidad
-// e intente evaluar demasiadas jugadas
-vaciarTablaTransposicionesSiNuevaPartida :-
-	not esNuevaPartida.
-vaciarTablaTransposicionesSiNuevaPartida :-
-	esNuevaPartida &
-	vaciarMapaZobrist.
-
 /* Objetivos iniciales */
 
 !inicializarEstructurasDatos.
@@ -669,7 +662,7 @@ vaciarTablaTransposicionesSiNuevaPartida :-
 // Analiza y realiza la mejor jugada decidible para el estado actual del tablero
 +!hacerMejorJugada[source(self)] :
 	estrategia(Est) & esei.si.alejandrogg.segundosJugadas(TiempoMax) &
-	vaciarTablaTransposicionesSiNuevaPartida &
+	vaciarMapaZobrist &
 	olvidarRayasSiNuevaPartida & inicializarTableroAnteriorSiNecesario &
 	percibirMovimientoRival & soyYoAIdentificadorJugador(true, MiId)
 <-
@@ -679,7 +672,7 @@ vaciarTablaTransposicionesSiNuevaPartida :-
 
 	// Realizar iterative deepening hasta que se agote el tiempo, o hayamos analizado la jugada a bastante profundidad
 	while (profundidadBusqueda(P) & system.time - Inicio < TiempoMax * 1000 & P <= 8) {
-		.print("Búsqueda de profundidad ", P, " en curso... (", system.time - Inicio, " ms transcurridos)");
+		.print("Búsqueda de profundidad ", P, " en curso... (", system.time - Inicio, " ms desde profundidad anterior)");
 		if (Est = jugarAGanar) {
 			?mejorSiguienteColumna;
 		} else {
@@ -690,11 +683,12 @@ vaciarTablaTransposicionesSiNuevaPartida :-
 	};
 
 	// Mostrar cuánto hemos tardado
-	.print("Movimiento analizado en ", system.time - Inicio, " ms");
+	?movimientoOptimo(X);
+	.print("Movimiento a ", X, " analizado en ", system.time - Inicio, " ms");
 
 	-inicioAnalisis(_);
 	-profundidadBusqueda(_);
-	-movimientoOptimo(X);
+	-movimientoOptimo(_);
 
 	// Recordar rayas que pudimos haber hecho, y calcular nuevo estado anterior
 	?calcularGravedad(X, Y);
@@ -713,7 +707,7 @@ vaciarTablaTransposicionesSiNuevaPartida :-
 	// Esta espera devuelve el control inmediatamente si las creencias están en la BC
 	.wait(hashZobristActual(_));
 
-	.wait(750); // Por si estamos recibiendo todavía percepciones del tablero
+	.wait(1250); // Por si estamos recibiendo todavía percepciones del tablero
 
 	// Por si quedó otro predicado turno/1 en la BC.
 	// Este .abolish pareció arreglar un extraño bug que no he podido reproducir
