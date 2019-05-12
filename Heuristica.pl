@@ -54,7 +54,7 @@ caracteristicaImpedirRaya(Yo, CaracteristicaImpedirRaya, Fichas) :-
 % Sin más rayas que procesar, el valor de la heurística se queda como está (caso base)
 caracteristicaImpedirRaya_impl(_, CaracteristicaImpedirRaya, _, [], CaracteristicaImpedirRaya).
 % Mientras queden rayas que procesar, incrementar la heurística si tenemos una ficha en una posición que bloquee esa raya
-caracteristicaImpedirRaya_impl(Yo, CaracteristicaImpedirRaya, Fichas, [raya(CX, CY, Fichas, DX, DY, Otro)|Cdr], CaracteristicaActual) :-
+caracteristicaImpedirRaya_impl(Yo, CaracteristicaImpedirRaya, Fichas, [raya(CX, CY, Fichas, DX, DY, _)|Cdr], CaracteristicaActual) :-
 	casillasOcupadas(CX, CY, Fichas, DX, DY, Casillas),
 	ultimoElemento(Casillas, casilla(X, Y)),
 	XBloq is X + DX,
