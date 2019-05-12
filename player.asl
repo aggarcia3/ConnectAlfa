@@ -642,6 +642,21 @@ obtenerEntradaZobrist(E) :-
 	hashZobristActual(Hash) &
 	mapaZobrist(Hash, E).
 
+// Vacía la tabla de transposiciones
+vaciarMapaZobrist :-
+	.abolish(mapaZobrist(_, _)) &
+	.abolish(entradasMapaZobrist(_)) &
+	.asserta(entradasMapaZobrist(0)).
+
+// Predicados que vacían la tabla de transposiciones si es una nueva partida, para
+// evitar que el agente crea conocer los resultados de varios niveles de profundidad
+// e intente evaluar demasiadas jugadas
+vaciarTablaTransposicionesSiNuevaPartida :-
+	not esNuevaPartida.
+vaciarTablaTransposicionesSiNuevaPartida :-
+	esNuevaPartida &
+	vaciarMapaZobrist.
+
 /* Objetivos iniciales */
 
 !inicializarEstructurasDatos.
@@ -654,7 +669,9 @@ obtenerEntradaZobrist(E) :-
 // Analiza y realiza la mejor jugada decidible para el estado actual del tablero
 +!hacerMejorJugada[source(self)] :
 	estrategia(Est) & esei.si.alejandrogg.segundosJugadas(TiempoMax) &
-	olvidarRayasSiNuevaPartida & inicializarTableroAnteriorSiNecesario & percibirMovimientoRival & soyYoAIdentificadorJugador(true, MiId)
+	vaciarTablaTransposicionesSiNuevaPartida &
+	olvidarRayasSiNuevaPartida & inicializarTableroAnteriorSiNecesario &
+	percibirMovimientoRival & soyYoAIdentificadorJugador(true, MiId)
 <-
 	+inicioAnalisis(system.time);
 	?inicioAnalisis(Inicio);
@@ -700,7 +717,7 @@ obtenerEntradaZobrist(E) :-
 
 	// Por si quedó otro predicado turno/1 en la BC.
 	// Este .abolish pareció arreglar un extraño bug que no he podido reproducir
-	// en mi ordenador, pero sí en el de Juan. Quizás se deba a alguna condición
+	// en mi ordenador, pero sí en el de Juan Carlos. Quizás se deba a alguna condición
 	// de carrera. El bug hacía que el agente dejase de jugar tras el primer
 	// movimiento
 	.abolish(turno(_)[source(percept)]);
