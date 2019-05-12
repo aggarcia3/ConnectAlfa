@@ -7,7 +7,7 @@ MAS connectAlfa {
 		// de que expire el tiempo incrementa el nivel de profundidad de la búsqueda iterativa.
 		// El valor predeterminado es aproximadamente T + 3 s, donde T es el tiempo que tarda un PC
 		// en analizar 3 niveles de profundidad en el primer turno de la primera partida. Tal PC tiene una CPU
-		// Intel Core i3-2100 @ 3,1 GHz, 4 GiB RAM DDR3 Single Channel, OpenJDK 11 y Windows 10 Home (64 bits).
+		// Intel Core i3-2100 @ 3,1 GHz, 4 GiB RAM DDR3 @ 1333 MHz Single Channel, OpenJDK 11 y Windows 10 Home (64 bits).
 		// *******************************************
 		// * IMPORTANTE: LEER SI APARENTA BLOQUEARSE *
 		// *******************************************
