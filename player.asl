@@ -124,11 +124,18 @@ minimaxVariasJugadas_impl([Jugada|Cdr], JugadaOptima, Heuristica, Profundidad, M
 
 // Realiza o no la poda alfa-beta en el nivel actual del árbol de juego, dependiendo de si se cumple
 // la condición de poda (MinimoMax mayor o igual que MaximoMin) o no
-podaAlfaBeta(MinimoMax, MaximoMin, Jugadas, JugadaOptima, Heuristica, Profundidad, Maximizar, JugadaOptimaActual, HeuristicaActual) :-
+/*podaAlfaBeta(MinimoMax, MaximoMin, Jugadas, JugadaOptima, Heuristica, Profundidad, Maximizar, JugadaOptimaActual, HeuristicaActual) :-
 	MinimoMax < MaximoMin & // No se cumple condición de poda
 	minimaxVariasJugadas_impl(Jugadas, JugadaOptima, Heuristica, Profundidad, MinimoMax, MaximoMin, Maximizar, JugadaOptimaActual, HeuristicaActual).
 podaAlfaBeta(MinimoMax, MaximoMin, _, JugadaOptimaActual, HeuristicaActual, _, _, JugadaOptimaActual, HeuristicaActual) :-
-	MinimoMax >= MaximoMin. // Se cumple condición de poda. No seguir analizando jugadas posibles por aquí
+	MinimoMax >= MaximoMin. // Se cumple condición de poda. No seguir analizando jugadas posibles por aquí*/
+
+// Por alguna razón el uso de poda alfa-beta afecta a los resultados, y no debería. Quizás alfa y/o beta tomen valores incorrectos en alguna parte,
+// pero estoy con el agua al cuello y no tengo tiempo para investigar la causa raíz, así que he desactivado la poda.
+// La ausencia de poda también ayuda a garantizar un tiempo de análisis más uniforme entre jugadas, pues el número de nodos procesados es más
+// fácil de predecir
+podaAlfaBeta(MinimoMax, MaximoMin, Jugadas, JugadaOptima, Heuristica, Profundidad, Maximizar, JugadaOptimaActual, HeuristicaActual) :-
+		minimaxVariasJugadas_impl(Jugadas, JugadaOptima, Heuristica, Profundidad, MinimoMax, MaximoMin, Maximizar, JugadaOptimaActual, HeuristicaActual).
 
 // Actualiza la tabla de transposiciones con los valores deseables
 actualizarTablaTransposiciones(JugadaActual, JugadaOptima, Heuristica, MinimoMax, MaximoMin, Profundidad) :-
@@ -180,7 +187,7 @@ generarJugadasInmediatas_impl(X, JugadaHecha, JugadasGeneradas, MisJugadas) :-
 	tablero(X, 0, 0) &
 	generarJugadasInmediatas_impl(X + 1, JugadaHecha, difListas(InicioJugadasGeneradas, FinJugadasGeneradas), MisJugadas) &
 	calcularGravedad(X, Y) &
-	append_simple(JugadaHecha, [movimiento(X, Y, MisJugadas)], NuevaJugada) & // No vamos a tener que iterar sobre muchas jugadas
+	.concat(JugadaHecha, [movimiento(X, Y, MisJugadas)], NuevaJugada) & // No vamos a tener que iterar sobre muchas jugadas
 	append_dl(difListas([NuevaJugada|Cdr], Cdr), difListas(InicioJugadasGeneradas, FinJugadasGeneradas), JugadasGeneradas).
 // Si hay una columna siguiente, pero no hay hueco para una ficha, continuar iteraciones sin añadir nuevas jugadas
 generarJugadasInmediatas_impl(X, JugadaHecha, difListas(InicioJugadasGeneradas, FinJugadasGeneradas), MisJugadas) :-
@@ -250,11 +257,6 @@ calcularGravedad(X, 0).
 // Concatena dos listas expresadas como diferencias de listas.
 // Esta operación es de complejidad O(1)
 append_dl(difListas(Inicio1, Fin1), difListas(Fin1, Fin2), difListas(Inicio1, Fin2)).
-
-// Concatena dos listas de manera trivial.
-// Esta operación es de complejidad O(n), pero funciona en listas cerradas
-append_simple([], L, L).
-append_simple([Car|Cdr], L, [Car|R]) :- append_simple(Cdr, L, R).
 
 // Obtiene el valor mínimo de dos variables instanciadas
 valorMinimo(A, B, A) :- A < B.
@@ -466,13 +468,40 @@ heuristica(_, Valor) :-
 	heuristicaPonderadaLineal(Valor).
 
 // Calcula una puntuación heurística a partir de características del tablero que se consideran positivas (y negativas)
-heuristicaPonderadaLineal(30 * CaracteristicaRaya3Mia + 20 * CaracteristicaRaya2Mia + CaracteristicaFichasCentroYo) :-
+heuristicaPonderadaLineal(/*30 * CaracteristicaImpedirRaya3 +*/ 30 * CaracteristicaRaya3Mia + 20 * CaracteristicaRaya2Mia + CaracteristicaFichasCentroYo) :-
+	//caracteristicaImpedirRaya(true, CaracteristicaImpedirRaya3, 3) &
 	caracteristicaRaya(true, CaracteristicaRaya3Mia, 3) &
 	caracteristicaRaya(true, CaracteristicaRaya2Mia, 2) &
 	caracteristicaFichasEnCentro(true, CaracteristicaFichasCentroYo).
 
 // Computa la característica de formar una raya de N fichas
-caracteristicaRaya(Yo, CaracteristicaRaya, Fichas) :- .count(rayaSimulada(_, _, Fichas, _, _, Yo), CaracteristicaRaya).
+caracteristicaRaya(Yo, CaracteristicaRaya, Fichas) :-
+	.count(raya(_, _, Fichas, _, _, Yo), CaracteristicaRaya).
+
+// Cláusula interfaz para computar el valor de la característica de impedir la formación de una raya al rival
+caracteristicaImpedirRaya(_, 0, 0).
+caracteristicaImpedirRaya(Yo, CaracteristicaImpedirRaya, Fichas) :-
+	(Fichas - 1) > 0 &
+	negar(Yo, Otro) &
+	.findall(raya(CX, CY, Fichas - 1, DX, DY, Otro), rayaSimulada(CX, CY, Fichas - 1, DX, DY, Otro), Rayas) &
+	caracteristicaImpedirRaya_impl(Yo, CaracteristicaImpedirRaya, Fichas - 1, Rayas, 0).
+// Sin más rayas que procesar, el valor de la heurística se queda como está (caso base)
+caracteristicaImpedirRaya_impl(_, CaracteristicaImpedirRaya, _, [], CaracteristicaImpedirRaya).
+// Mientras queden rayas que procesar, incrementar la heurística si tenemos una ficha en una posición que bloquee esa raya
+caracteristicaImpedirRaya_impl(Yo, CaracteristicaImpedirRaya, Fichas, [raya(CX, CY, Fichas, DX, DY, _)|Cdr], CaracteristicaActual) :-
+	casillasOcupadas(CX, CY, Fichas, DX, DY, Casillas) &
+	ultimoElemento(Casillas, casilla(X, Y)) &
+	incrementarSiImpide(Yo, X + DX, Y + DY, CaracteristicaActual, NuevaCaracteristica) &
+	caracteristicaImpedirRaya_impl(Yo, CaracteristicaImpedirRaya, Fichas, Cdr, NuevaCaracteristica).
+
+// Predicados que incrementan el valor de CaracteristicaActual dependiendo de si se cumple la condición
+// de bloqueo o no
+incrementarSiImpide(Yo, XBloq, YBloq, CaracteristicaActual, CaracteristicaActual) :-
+	soyYoAIdentificadorJugador(Yo, Id) &
+	not tablero(XBloq, YBloq, Id).
+incrementarSiImpide(Yo, XBloq, YBloq, CaracteristicaActual, CaracteristicaActual + 1) :-
+	soyYoAIdentificadorJugador(Yo, Id) &
+	tablero(XBloq, YBloq, Id).
 
 // Computa la característica de tener fichas en el centro
 caracteristicaFichasEnCentro(Yo, CaracteristicaFichasCentro1 + CaracteristicaFichasCentro2) :-
