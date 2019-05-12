@@ -44,7 +44,7 @@ public final class retract extends DefaultInternalAction {
                     }
                 }
 
-                if (aBorrar != null){
+                if (aBorrar != null) {
                     ts.getAg().delBel(aBorrar);
                 }
             }

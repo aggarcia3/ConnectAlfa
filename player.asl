@@ -678,7 +678,7 @@ vaciarTablaTransposicionesSiNuevaPartida :-
 	+profundidadBusqueda(1);
 
 	// Realizar iterative deepening hasta que se agote el tiempo, o hayamos analizado la jugada a bastante profundidad
-	while (profundidadBusqueda(P) & system.time - Inicio < TiempoMax * 1000 & P <= 12) {
+	while (profundidadBusqueda(P) & system.time - Inicio < TiempoMax * 1000 & P <= 8) {
 		.print("Búsqueda de profundidad ", P, " en curso... (", system.time - Inicio, " ms transcurridos)");
 		if (Est = jugarAGanar) {
 			?mejorSiguienteColumna;
